@@ -1,5 +1,5 @@
 import com.android.build.api.variant.impl.VariantOutputImpl
-import javax.xml.parsers.DocumentBuilderFactory
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import kotlin.reflect.full.declaredMemberProperties
 
 fun String.runCommand(): String {
@@ -29,7 +29,7 @@ val gitInfo = GitInfo(
 )
 
 val debugSuffixPairList by lazy {
-    DocumentBuilderFactory
+    javax.xml.parsers.DocumentBuilderFactory
         .newInstance()
         .newDocumentBuilder()
         .parse(file("$projectDir/src/main/res/values/strings.xml"))
@@ -60,8 +60,14 @@ plugins {
 }
 
 android {
-    namespace = "li.songe.gkd"
+    namespace = rootProject.ext["android.namespace"].toString()
+    compileSdk = rootProject.ext["android.compileSdk"] as Int
+    buildToolsVersion = rootProject.ext["android.buildToolsVersion"].toString()
+
     defaultConfig {
+        minSdk = rootProject.ext["android.minSdk"] as Int
+        targetSdk = rootProject.ext["android.targetSdk"] as Int
+
         applicationId = "li.songe.gkd"
         versionCode = 92
         versionName = "1.12.1"
@@ -149,6 +155,10 @@ android {
             manifestPlaceholders["channel"] = name
         }
     }
+    compileOptions {
+        sourceCompatibility = rootProject.ext["android.javaVersion"] as JavaVersion
+        targetCompatibility = rootProject.ext["android.javaVersion"] as JavaVersion
+    }
     dependenciesInfo.includeInApk = false
     packaging.resources.excludes += setOf(
         // https://github.com/Kotlin/kotlinx.coroutines/issues/2023
@@ -169,6 +179,27 @@ if (project.hasProperty("GKD_RENAME_APK_FLAG")) {
             output as VariantOutputImpl
             output.outputFileName = "gkd-v${output.versionName.get()}.apk"
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(rootProject.ext["kotlin.jvmTarget"] as JvmTarget)
+        freeCompilerArgs.addAll(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=kotlin.contracts.ExperimentalContracts",
+            "-opt-in=kotlinx.coroutines.FlowPreview",
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+            "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
+            "-opt-in=androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi",
+            "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi",
+            "-opt-in=androidx.compose.foundation.layout.ExperimentalLayoutApi",
+            "-Xcontext-parameters",
+            "-Xexplicit-backing-fields",
+            "-XXLanguage:+MultiDollarInterpolation",
+        )
     }
 }
 

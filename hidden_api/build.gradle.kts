@@ -3,7 +3,12 @@ plugins {
 }
 
 android {
-    namespace = project.name
+    namespace = rootProject.ext["android.namespace"].toString() + "." + project.name
+    compileSdk = rootProject.ext["android.compileSdk"] as Int
+    buildToolsVersion = rootProject.ext["android.buildToolsVersion"].toString()
+    defaultConfig {
+        minSdk = rootProject.ext["android.minSdk"] as Int
+    }
 }
 
 dependencies {

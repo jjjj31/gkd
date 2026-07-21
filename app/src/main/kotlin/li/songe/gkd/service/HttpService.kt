@@ -48,11 +48,13 @@ import li.songe.gkd.notif.StopServiceReceiver
 import li.songe.gkd.notif.httpNotif
 import li.songe.gkd.store.storeFlow
 import li.songe.gkd.util.DefaultSimpleLifeImpl
+import li.songe.gkd.util.LOCAL_SUBS_ID
 import li.songe.gkd.util.LOCAL_HTTP_SUBS_ID
 import li.songe.gkd.util.LogUtils
 import li.songe.gkd.util.OnSimpleLife
 import li.songe.gkd.util.SERVER_SCRIPT_URL
 import li.songe.gkd.util.SnapshotExt
+import li.songe.gkd.util.appendLocalRules
 import li.songe.gkd.util.SnapshotExt.getMinSnapshot
 import li.songe.gkd.util.deleteSubscription
 import li.songe.gkd.util.getIpAddressInLocalNetwork
@@ -60,9 +62,11 @@ import li.songe.gkd.util.isPortAvailable
 import li.songe.gkd.util.keepNullJson
 import li.songe.gkd.util.launchTry
 import li.songe.gkd.util.mapState
+import li.songe.gkd.util.parseLocalRulesAppendRequest
 import li.songe.gkd.util.startForegroundServiceByClass
 import li.songe.gkd.util.stopServiceByClass
 import li.songe.gkd.util.subsItemsFlow
+import li.songe.gkd.util.subsMapFlow
 import li.songe.gkd.util.toast
 import li.songe.gkd.util.updateSubscription
 
@@ -230,6 +234,36 @@ private fun CoroutineScope.createServer(port: Int) = embeddedServer(CIO, port) {
                 DbSet.subsItemDao.insert((subsItemsFlow.value.find { s -> s.id == httpSubsItem.id }
                     ?: httpSubsItem).copy(mtime = System.currentTimeMillis()))
                 call.respond(RpcOk())
+            }
+            post("/localRules/append") {
+                val request = parseLocalRulesAppendRequest(call.receiveText())
+                val current = subsMapFlow.value[LOCAL_SUBS_ID] ?: RawSubscription(
+                    id = LOCAL_SUBS_ID,
+                    name = "本地订阅",
+                    version = 0,
+                )
+                val result = appendLocalRules(
+                    current = current,
+                    incomingApp = request.app,
+                    dedupe = request.dedupe,
+                )
+                if (result.changed) {
+                    updateSubscription(result.subscription)
+                    val oldItem = subsItemsFlow.value.find { s -> s.id == LOCAL_SUBS_ID }
+                    DbSet.subsItemDao.insert(
+                        (oldItem ?: SubsItem(
+                            id = LOCAL_SUBS_ID,
+                            order = subsItemsFlow.value.minByOrNull { it.order }?.order ?: 0,
+                            enable = true,
+                            enableUpdate = false,
+                        )).copy(
+                            enable = true,
+                            enableUpdate = false,
+                            mtime = System.currentTimeMillis(),
+                        )
+                    )
+                }
+                call.respond(result.toResponse())
             }
             post("/execSelector") {
                 val gkdAction = call.receive<GkdAction>()
