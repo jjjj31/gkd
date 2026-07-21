@@ -50,6 +50,26 @@ GKD **默认不提供规则**，需自行添加本地规则，或者通过订阅
 
 </details>
 
+### HTTP 导入本地规则
+
+本 fork 支持通过 HTTP 接口向本地订阅导入规则，兼容 [gkd-kit/inspect](https://github.com/gkd-kit/inspect) 快照审查工具。
+
+**接口**: `POST http://localhost:8888/localRules/append`
+
+**请求体**:
+```json
+{
+  "app": {
+    "id": "com.example.app",
+    "name": "示例应用",
+    "groups": [...]
+  },
+  "dedupe": true
+}
+```
+
+规则会自动追加到本地订阅（订阅ID: -2），已存在的选择器默认跳过不重复添加。
+
 ## 选择器
 
 一个类似 CSS 选择器的选择器, 能联系节点上下文信息, 更容易也更精确找到目标节点
